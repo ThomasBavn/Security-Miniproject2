@@ -7,7 +7,7 @@ import (
 
 	t "time"
 
-	"github.com/ThomasBavn/Security-Miniproject2/mpc"
+	gRPC "github.com/ThomasBavn/Security-Miniproject2/proto"
 
 	"google.golang.org/grpc"
 )
@@ -24,7 +24,7 @@ func main() {
 	defer conn.Close()
 
 	//  Create new Client from generated gRPC code from proto
-	c := mpc.NewGetCurrentTimeClient(conn)
+	c := gRPC.NewGetCurrentTimeClient(conn)
 
 	for {
 		SendGetTimeRequest(c)
@@ -32,9 +32,9 @@ func main() {
 	}
 }
 
-func SendGetTimeRequest(c mpc.GetCurrentTimeClient) {
+func SendGetTimeRequest(c gRPC.GetCurrentTimeClient) {
 	// Between the curly brackets are nothing, because the .proto file expects no input.
-	message := mpc.GetTimeRequest{}
+	message := gRPC.GetTimeRequest{}
 
 	response, err := c.GetTime(context.Background(), &message)
 	if err != nil {

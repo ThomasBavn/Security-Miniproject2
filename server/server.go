@@ -7,18 +7,18 @@ import (
 	"net"
 	t "time"
 
-	"github.com/ThomasBavn/Security-Miniproject2/mpc"
+	gRPC "github.com/ThomasBavn/Security-Miniproject2/proto"
 
 	"google.golang.org/grpc"
 )
 
 type Server struct {
-	mpc.UnimplementedGetCurrentTimeServer
+	gRPC.UnimplementedGetCurrentTimeServer
 }
 
-func (s *Server) GetTime(ctx context.Context, in *mpc.GetTimeRequest) (*mpc.GetTimeReply, error) {
+func (s *Server) GetTime(ctx context.Context, in *gRPC.GetTimeRequest) (*gRPC.GetTimeReply, error) {
 	fmt.Printf("Received GetTime request\n")
-	return &mpc.GetTimeReply{Reply: t.Now().String()}, nil
+	return &gRPC.GetTimeReply{Reply: t.Now().String()}, nil
 }
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
 		log.Fatalf("Failed to listen on port 9080: %v", err)
 	}
 	grpcServer := grpc.NewServer()
-	mpc.RegisterGetCurrentTimeServer(grpcServer, &Server{})
+	gRPC.RegisterGetCurrentTimeServer(grpcServer, &Server{})
 
 	if err := grpcServer.Serve(list); err != nil {
 		log.Fatalf("failed to server %v", err)
