@@ -5,41 +5,32 @@ import (
 	"fmt"
 	"log"
 	"net"
+	t "time"
 
-	"github.com/Grumlebob/GoLangAssignment2HardgRPC/protos"
+	"github.com/ThomasBavn/Security-Miniproject2/mpc"
 
 	"google.golang.org/grpc"
 )
 
 type Server struct {
-	protos.ChatServiceServer
+	mpc.UnimplementedGetCurrentTimeServer
 }
 
-func (s *Server) GetHeader(ctx context.Context, message *protos.Message) (*protos.Message, error) {
-	var msgServer = message
-	//If recieving first handshake
-	if (message.Seq == 0) && (message.Ack == 0) {
-		fmt.Println("Server recieved first handshake, with Syn flag True and Seq 0")
-		msgServer = &protos.Message{Text: "Second handshake  sent from Server, with Syn flag True and Ack 1", Seq: message.Seq, Ack: message.Seq + 1}
-		fmt.Printf("Server sending second handshake with Ack: %d \n", msgServer.Ack)
-	} else {
-		fmt.Printf("Server acknowledged it got %d and processed it. \n", message.Seq)
-		msgServer = &protos.Message{Seq: message.Seq, Ack: message.Seq + 1}
-		fmt.Printf("Server expect next to be Seq %d \n", msgServer.Ack)
-	}
-	return msgServer, nil
+func (s *Server) GetTime(ctx context.Context, in *mpc.GetTimeRequest) (*mpc.GetTimeReply, error) {
+	fmt.Printf("Received GetTime request\n")
+	return &mpc.GetTimeReply{Reply: t.Now().String()}, nil
 }
 
 func main() {
 	// Create listener tcp on port 9080
-	listener, err := net.Listen("tcp", ":9080")
+	list, err := net.Listen("tcp", ":9080")
 	if err != nil {
 		log.Fatalf("Failed to listen on port 9080: %v", err)
 	}
 	grpcServer := grpc.NewServer()
-	protos.RegisterChatServiceServer(grpcServer, &Server{})
+	mpc.RegisterGetCurrentTimeServer(grpcServer, &Server{})
 
-	if err := grpcServer.Serve(listener); err != nil {
+	if err := grpcServer.Serve(list); err != nil {
 		log.Fatalf("failed to server %v", err)
 	}
 }
