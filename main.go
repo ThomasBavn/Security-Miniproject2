@@ -23,7 +23,7 @@ type peer struct {
 	gRPC.UnimplementedNodeServer
 	id             interface{}
 	clients        map[int]gRPC.NodeClient
-	receivedChunks []int
+	receivedShares []int
 	ctx            context.Context
 }
 
@@ -38,7 +38,7 @@ func main() {
 	p := &peer{
 		id:             ownPort,
 		clients:        make(map[int]gRPC.NodeClient),
-		receivedChunks: []int{},
+		receivedShares: []int{},
 		ctx:            ctx,
 	}
 
@@ -119,28 +119,28 @@ func (p *peer) SendTo(clientId, data int) {
 }
 
 func (p *peer) DistributeData(secret int) {
-	chunks := createShares(secret)
+	shares := createShares(secret)
 
-	// ensure that the peer itself gets the first chunk
-	p.receivedChunks = append(p.receivedChunks, chunks[0])
-	log.Printf("port %v gave itself %v", p.id, chunks[0])
-	i := 1
-	// send the rest of the chunks to the other peers
+	// ensure that the peer itself gets the first share
+	p.receivedShares = append(p.receivedShares, shares[0])
+	log.Printf("port %v gave itself %v", p.id, shares[0])
+	shareI := 1
+	// send the rest of the shares to the other peers
 	for id := range p.clients {
 		if id == p.id || id == hospitalId {
 			continue
 		}
-		p.SendTo(id, chunks[i])
-		i++
+		p.SendTo(id, shares[shareI])
+		shareI++
 	}
-	if len(p.receivedChunks) == 3 {
-		log.Printf("port %v has the following shares: %v", p.id, p.receivedChunks)
+	if len(p.receivedShares) == 3 {
+		log.Printf("port %v has the following shares: %v", p.id, p.receivedShares)
 		if p.id == hospitalId {
-			log.Printf("Hospital has the final value %v", sum(p.receivedChunks))
+			log.Printf("Hospital has the final value %v", sum(p.receivedShares))
 		} else {
 			// send to hospital
-			log.Printf("port %v sent %v to hospital", p.id, sum(p.receivedChunks))
-			p.SendTo(hospitalId, sum(p.receivedChunks))
+			log.Printf("port %v sent %v to hospital", p.id, sum(p.receivedShares))
+			p.SendTo(hospitalId, sum(p.receivedShares))
 		}
 	}
 }
@@ -149,19 +149,19 @@ func (p *peer) Exchange(_ context.Context, request *gRPC.ExchangeRequest) (*empt
 
 	log.Printf("port %v received %v", p.id, request.Share)
 
-	p.receivedChunks = append(p.receivedChunks, int(request.Share))
+	p.receivedShares = append(p.receivedShares, int(request.Share))
 
-	log.Printf("port %v has %v chunks", p.id, len(p.receivedChunks))
+	log.Printf("port %v has %v shares", p.id, len(p.receivedShares))
 
-	if len(p.receivedChunks) == 3 {
+	if len(p.receivedShares) == 3 {
 
 		if p.id == 5000 { // if peer is hospital
-			log.Printf("Hospital has the final value %v", sum(p.receivedChunks))
+			log.Printf("Hospital has the final value %v", sum(p.receivedShares))
 
 		} else {
 			// send to hospital
-			log.Printf("port %v sent %v to hospital", p.id, sum(p.receivedChunks))
-			p.SendTo(hospitalId, sum(p.receivedChunks))
+			log.Printf("port %v sent %v to hospital", p.id, sum(p.receivedShares))
+			p.SendTo(hospitalId, sum(p.receivedShares))
 		}
 	}
 	return &emptypb.Empty{}, nil
