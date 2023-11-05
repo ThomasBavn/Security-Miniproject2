@@ -1,29 +1,43 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"log"
+	"math/rand"
 	"net"
 	"os"
 	"strconv"
+	"time"
 
+	gRPC "github.com/ThomasBavn/Security-Miniproject2/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
+var prime = 87178291199
+var hospitalId = 5000
+
+type peer struct {
+	gRPC.UnimplementedNodeServer
+	id             interface{}
+	clients        map[int]gRPC.NodeClient
+	receivedChunks []int
+	ctx            context.Context
+}
+
 func main() {
 	log.SetFlags(log.Lshortfile)
 	arg1, _ := strconv.ParseInt(os.Args[1], 10, 32)
-	ownPort := int32(arg1) + hospitalId // clients are 5001 5002 5003
+	ownPort := int(arg1) + hospitalId //hospital is 5000, clients are 5001 5002 5003
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	p := &peer{
 		id:             ownPort,
-		clients:        make(map[int32]exchange.ExchangeDataClient),
+		clients:        make(map[int]gRPC.NodeClient),
 		receivedChunks: []int{},
 		ctx:            ctx,
 	}
@@ -36,11 +50,11 @@ func main() {
 
 	serverCert, err := credentials.NewServerTLSFromFile("certificate/server.crt", "certificate/priv.key")
 	if err != nil {
-		log.Fatalln("failed to create cert", err)
+		log.Fatalln("failed to create certificate", err)
 	}
 
 	grpcServer := grpc.NewServer(grpc.Creds(serverCert))
-	exchange.RegisterExchangeDataServer(grpcServer, p)
+	gRPC.RegisterNodeServer(grpcServer, p)
 
 	// start the server
 	go func() {
@@ -49,9 +63,10 @@ func main() {
 		}
 	}()
 
+	// Credit to Thor Andersen (TCLA) for helping setting up the TLS secure connection
 	// Dial the other peers
-	for i := 0; i <= 3; i++ {
-		port := hospitalId + int32(i)
+	for i := 0; i < 4; i++ {
+		port := hospitalId + i
 
 		if port == ownPort {
 			continue
@@ -60,32 +75,111 @@ func main() {
 		// Set up client connections
 		clientCert, err := credentials.NewClientTLSFromFile("certificate/server.crt", "")
 		if err != nil {
-			log.Fatalln("failed to create cert", err)
+			log.Fatalln("failed to create cert\n", err)
 		}
 
-		fmt.Printf("Trying to dial: %v\n", port)
+		log.Printf("Trying to dial: %v\n", port)
 		conn, err := grpc.Dial(fmt.Sprintf("localhost:%v", port), grpc.WithTransportCredentials(clientCert), grpc.WithBlock())
 		if err != nil {
 			log.Fatalf("did not connect: %s", err)
 		}
 		defer conn.Close()
-		c := exchange.NewExchangeDataClient(conn)
+
+		c := gRPC.NewNodeClient(conn)
 		p.clients[port] = c
-		fmt.Printf("%v", p.clients)
 	}
-	scanner := bufio.NewScanner(os.Stdin)
-	if ownPort != hospitalId {
-		fmt.Print("Enter a number between 0 and 1 000 000 to share it secretly with the other peers.\nNumber: ")
-		for scanner.Scan() {
-			secret, _ := strconv.ParseInt(scanner.Text(), 10, 32)
-			p.ShareDataChunks(int(secret))
-		}
+
+	if ownPort == hospitalId {
+		log.Println("Waiting for participants to send data")
 	} else {
-		fmt.Print("Waiting for data from peers...\nwrite 'quit' to end me\n")
-		for scanner.Scan() {
-			if scanner.Text() == "quit" {
-				return
-			}
+		//random := rand.New(rand.NewSource(int64(ownPort)))
+		//secret := random.Intn(ownPort)
+
+		// send its own port as secret for easy verification
+		secret := ownPort
+		p.DistributeData(secret)
+	}
+
+	// Keep main function alive until the program is terminated
+	for true {
+	}
+
+}
+
+func (p *peer) SendTo(clientId, data int) {
+	client := p.clients[clientId]
+	request := &gRPC.ExchangeRequest{Share: int32(data)}
+	log.Printf("Client %v received %v", clientId, data)
+
+	_, err := client.Exchange(p.ctx, request)
+	if err != nil {
+		log.Fatalf("Error!: %v", err)
+	}
+	log.Printf("Client %v succesfully received share", clientId)
+}
+
+func (p *peer) DistributeData(secret int) {
+	chunks := createShares(secret)
+
+	// ensure that the peer itself gets the first chunk
+	p.receivedChunks = append(p.receivedChunks, chunks[0])
+	log.Printf("port %v gave itself %v", p.id, chunks[0])
+	i := 1
+	// send the rest of the chunks to the other peers
+	for id := range p.clients {
+		if id == p.id || id == hospitalId {
+			continue
+		}
+		p.SendTo(id, chunks[i])
+		i++
+	}
+	if len(p.receivedChunks) == 3 {
+		log.Printf("port %v has the following shares: %v", p.id, p.receivedChunks)
+		if p.id == hospitalId {
+			log.Printf("Hospital has the final value %v", sum(p.receivedChunks))
+		} else {
+			// send to hospital
+			log.Printf("port %v sent %v to hospital", p.id, sum(p.receivedChunks))
+			p.SendTo(hospitalId, sum(p.receivedChunks))
 		}
 	}
+}
+
+func (p *peer) Exchange(_ context.Context, request *gRPC.ExchangeRequest) (*emptypb.Empty, error) {
+
+	log.Printf("port %v received %v", p.id, request.Share)
+
+	p.receivedChunks = append(p.receivedChunks, int(request.Share))
+
+	log.Printf("port %v has %v chunks", p.id, len(p.receivedChunks))
+
+	if len(p.receivedChunks) == 3 {
+
+		if p.id == 5000 { // if peer is hospital
+			log.Printf("Hospital has the final value %v", sum(p.receivedChunks))
+
+		} else {
+			// send to hospital
+			log.Printf("port %v sent %v to hospital", p.id, sum(p.receivedChunks))
+			p.SendTo(hospitalId, sum(p.receivedChunks))
+		}
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func sum(shares []int) int {
+	sum := 0
+	for _, share := range shares {
+		sum += share
+	}
+	return sum
+}
+
+func createShares(secret int) []int {
+	random := rand.New(rand.NewSource(time.Now().UnixNano()))
+	// Ensure that a and b is between -prime and prime
+	a := random.Intn(2*prime+1) - prime
+	b := random.Intn(2*prime+1) - prime
+	c := secret - a - b
+	return []int{a, b, c}
 }
