@@ -1,12 +1,12 @@
 syntax = "proto3";
 
 package proto;
-option go_package = "github.com/ThomasBavn/Security-Miniproject2";
+import "google/protobuf/empty.proto";
+//option go_package = "github.com/ThomasBavn/Security-Miniproject2";
+option go_package = "proto/mpc.proto;proto";
 
-service Exchange {
-  rpc sendShare(SendShareRequest) returns (SendShareResponse) {}
+service Node {
+  rpc exchange(ExchangeRequest) returns (google.protobuf.Empty) {}
 }
 
-message SendShareRequest {}
-
-message SendShareResponse { int32 share = 1; }
+message ExchangeRequest { int32 share = 1; }

@@ -4,13 +4,14 @@
 // - protoc             v4.24.4
 // source: proto/mpc.proto
 
-package Security_Miniproject2
+package proto
 
 import (
 	context "context"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -18,86 +19,86 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// ExchangeClient is the client API for Exchange service.
+// NodeClient is the client API for Node service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type ExchangeClient interface {
-	SendShare(ctx context.Context, in *SendShareRequest, opts ...grpc.CallOption) (*SendShareResponse, error)
+type NodeClient interface {
+	Exchange(ctx context.Context, in *ExchangeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
-type exchangeClient struct {
+type nodeClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewExchangeClient(cc grpc.ClientConnInterface) ExchangeClient {
-	return &exchangeClient{cc}
+func NewNodeClient(cc grpc.ClientConnInterface) NodeClient {
+	return &nodeClient{cc}
 }
 
-func (c *exchangeClient) SendShare(ctx context.Context, in *SendShareRequest, opts ...grpc.CallOption) (*SendShareResponse, error) {
-	out := new(SendShareResponse)
-	err := c.cc.Invoke(ctx, "/proto.Exchange/sendShare", in, out, opts...)
+func (c *nodeClient) Exchange(ctx context.Context, in *ExchangeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/proto.Node/exchange", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// ExchangeServer is the server API for Exchange service.
-// All implementations must embed UnimplementedExchangeServer
+// NodeServer is the server API for Node service.
+// All implementations must embed UnimplementedNodeServer
 // for forward compatibility
-type ExchangeServer interface {
-	SendShare(context.Context, *SendShareRequest) (*SendShareResponse, error)
-	mustEmbedUnimplementedExchangeServer()
+type NodeServer interface {
+	Exchange(context.Context, *ExchangeRequest) (*emptypb.Empty, error)
+	mustEmbedUnimplementedNodeServer()
 }
 
-// UnimplementedExchangeServer must be embedded to have forward compatible implementations.
-type UnimplementedExchangeServer struct {
+// UnimplementedNodeServer must be embedded to have forward compatible implementations.
+type UnimplementedNodeServer struct {
 }
 
-func (UnimplementedExchangeServer) SendShare(context.Context, *SendShareRequest) (*SendShareResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendShare not implemented")
+func (UnimplementedNodeServer) Exchange(context.Context, *ExchangeRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Exchange not implemented")
 }
-func (UnimplementedExchangeServer) mustEmbedUnimplementedExchangeServer() {}
+func (UnimplementedNodeServer) mustEmbedUnimplementedNodeServer() {}
 
-// UnsafeExchangeServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to ExchangeServer will
+// UnsafeNodeServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to NodeServer will
 // result in compilation errors.
-type UnsafeExchangeServer interface {
-	mustEmbedUnimplementedExchangeServer()
+type UnsafeNodeServer interface {
+	mustEmbedUnimplementedNodeServer()
 }
 
-func RegisterExchangeServer(s grpc.ServiceRegistrar, srv ExchangeServer) {
-	s.RegisterService(&Exchange_ServiceDesc, srv)
+func RegisterNodeServer(s grpc.ServiceRegistrar, srv NodeServer) {
+	s.RegisterService(&Node_ServiceDesc, srv)
 }
 
-func _Exchange_SendShare_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SendShareRequest)
+func _Node_Exchange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExchangeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ExchangeServer).SendShare(ctx, in)
+		return srv.(NodeServer).Exchange(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/proto.Exchange/sendShare",
+		FullMethod: "/proto.Node/exchange",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ExchangeServer).SendShare(ctx, req.(*SendShareRequest))
+		return srv.(NodeServer).Exchange(ctx, req.(*ExchangeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// Exchange_ServiceDesc is the grpc.ServiceDesc for Exchange service.
+// Node_ServiceDesc is the grpc.ServiceDesc for Node service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Exchange_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "proto.Exchange",
-	HandlerType: (*ExchangeServer)(nil),
+var Node_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.Node",
+	HandlerType: (*NodeServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "sendShare",
-			Handler:    _Exchange_SendShare_Handler,
+			MethodName: "exchange",
+			Handler:    _Node_Exchange_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
